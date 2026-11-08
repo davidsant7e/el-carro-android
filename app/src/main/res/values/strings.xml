@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">El Carro</string>
+    <string name="compartir_destino">Buscar rutas con El Carro</string>
+</resources>
