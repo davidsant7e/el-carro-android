@@ -142,6 +142,30 @@ fun PantallaPrincipal(
             }
         }
     }
+    e.paradaTocada?.let { p ->
+        AlertDialog(
+            onDismissRequest = { vm.tocarParada(null) },
+            title = { Text(p.lugar.nombre ?: "Parada", maxLines = 2, overflow = TextOverflow.Ellipsis) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(onClick = { vm.marcarSiguiente(p.id); vm.tocarParada(null) }) {
+                        Text(if (p.siguiente) "Quitar «ir ahora»" else "Ir ahora a esta (siguiente parada)")
+                    }
+                    TextButton(onClick = { vm.marcarFinal(p.id); vm.tocarParada(null) }) {
+                        Text(if (p.final) "Quitar «terminar aquí»" else "Terminar la ruta aquí")
+                    }
+                    TextButton(onClick = { vm.marcarVisitada(p.id, !p.visitada); vm.tocarParada(null) }) {
+                        Text(if (p.visitada) "Marcar como pendiente" else "Marcar como hecha")
+                    }
+                    TextButton(onClick = { vm.quitarParada(p.id); vm.tocarParada(null) }) {
+                        Text("Quitar parada", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { vm.tocarParada(null) }) { Text("Cerrar") } },
+        )
+    }
     if (ajustes) DialogoAjustes(e, onCerrar = { ajustes = false }, onGuardar = { p, clave, borrar, servidor ->
         vm.guardarAjustes(p, clave, borrar, servidor); ajustes = false
     })

@@ -15,6 +15,16 @@ android {
         versionName = "0.1.0"
     }
 
+    // Llave de prueba compartida (firma/LEEME.md): el PC y GitHub Actions firman igual.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = rootProject.file("firma/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false

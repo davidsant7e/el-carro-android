@@ -15,6 +15,10 @@ data class Parada(
     val minutos: Int = 15,
     /** Ya se visitó (no entra al recalcular). */
     val visitada: Boolean = false,
+    /** El usuario quiere que la ruta termine aquí. */
+    val final: Boolean = false,
+    /** El usuario quiere ir ahora a esta (queda primera). */
+    val siguiente: Boolean = false,
 )
 
 /** Una parada del itinerario con sus tiempos. Horas en milisegundos (epoch). */
@@ -53,30 +57,44 @@ object Optimizador {
      * Mejor orden para recorrer las paradas 1..n saliendo de 0 y terminando en cualquiera (camino abierto).
      * `t[i][j]` = segundos de i a j (Double.POSITIVE_INFINITY si no hay camino). Devuelve índices 1..n.
      */
-    fun orden(t: Array<DoubleArray>): List<Int> {
+    fun orden(t: Array<DoubleArray>, primero: Int? = null, ultimo: Int? = null): List<Int> {
         val n = t.size - 1
         if (n <= 0) return emptyList()
+        val p = primero?.takeIf { it in 1..n }
+        val u = ultimo?.takeIf { it in 1..n && it != p }
         if (n == 1) return listOf(1)
-        val r = if (n <= MAX_EXACTO) exacto(t, n) else mejorar(t, vecinoMasCercano(t, n))
-        return r
+        // Lo fijo (primera / última) se pone aparte; se ordena el medio saliendo desde la primera.
+        val medio = (1..n).filter { it != p && it != u }
+        val desde = p ?: 0
+        val ordenMedio = when {
+            medio.isEmpty() -> emptyList()
+            medio.size <= MAX_EXACTO -> exacto(t, desde, medio, u)
+            else -> mejorar(t, desde, vecinoMasCercano(t, desde, medio), u)
+        }
+        return listOfNotNull(p) + ordenMedio + listOfNotNull(u)
     }
 
-    fun costo(t: Array<DoubleArray>, orden: List<Int>): Double {
+    fun costo(t: Array<DoubleArray>, orden: List<Int>, desde: Int = 0, hasta: Int? = null): Double {
         var c = 0.0
-        var antes = 0
+        var antes = desde
         for (i in orden) {
             c += t[antes][i]
             antes = i
         }
+        if (hasta != null) c += t[antes][hasta]
         return c
     }
 
-    /** Held-Karp: programación dinámica sobre subconjuntos (2^n · n²). */
-    private fun exacto(t: Array<DoubleArray>, n: Int): List<Int> {
+    /**
+     * Held-Karp sobre los nodos de [medio]: sale de [desde], visita todos y, si hay [hasta], suma el
+     * tramo final hasta él (que se agrega afuera). 2^n · n².
+     */
+    private fun exacto(t: Array<DoubleArray>, desde: Int, medio: List<Int>, hasta: Int?): List<Int> {
+        val n = medio.size
         val todos = 1 shl n
         val dp = Array(todos) { DoubleArray(n) { Double.POSITIVE_INFINITY } }
         val previo = Array(todos) { IntArray(n) { -1 } }
-        for (j in 0 until n) dp[1 shl j][j] = t[0][j + 1]
+        for (j in 0 until n) dp[1 shl j][j] = t[desde][medio[j]]
         for (mascara in 1 until todos) {
             for (j in 0 until n) {
                 if (mascara and (1 shl j) == 0) continue
@@ -85,7 +103,7 @@ object Optimizador {
                 for (k in 0 until n) {
                     if (mascara and (1 shl k) != 0) continue
                     val nueva = mascara or (1 shl k)
-                    val c = base + t[j + 1][k + 1]
+                    val c = base + t[medio[j]][medio[k]]
                     if (c < dp[nueva][k]) {
                         dp[nueva][k] = c
                         previo[nueva][k] = j
@@ -94,12 +112,13 @@ object Optimizador {
             }
         }
         val llena = todos - 1
-        var ultimo = (0 until n).minByOrNull { dp[llena][it] } ?: 0
-        if (dp[llena][ultimo] == Double.POSITIVE_INFINITY) return vecinoMasCercano(t, n)
+        fun total(j: Int) = dp[llena][j] + (hasta?.let { t[medio[j]][it] } ?: 0.0)
+        var ultimo = (0 until n).minByOrNull { total(it) } ?: 0
+        if (total(ultimo) == Double.POSITIVE_INFINITY) return vecinoMasCercano(t, desde, medio)
         val orden = ArrayList<Int>()
         var mascara = llena
         while (ultimo != -1) {
-            orden += ultimo + 1
+            orden += medio[ultimo]
             val p = previo[mascara][ultimo]
             mascara = mascara xor (1 shl ultimo)
             ultimo = p
@@ -107,10 +126,10 @@ object Optimizador {
         return orden.reversed()
     }
 
-    private fun vecinoMasCercano(t: Array<DoubleArray>, n: Int): List<Int> {
-        val pendientes = (1..n).toMutableSet()
+    private fun vecinoMasCercano(t: Array<DoubleArray>, desde: Int, medio: List<Int>): List<Int> {
+        val pendientes = medio.toMutableSet()
         val orden = ArrayList<Int>()
-        var actual = 0
+        var actual = desde
         while (pendientes.isNotEmpty()) {
             val sig = pendientes.minBy { t[actual][it] }
             orden += sig
@@ -121,9 +140,9 @@ object Optimizador {
     }
 
     /** 2-opt y reubicación de una parada, hasta que ya no mejore. */
-    private fun mejorar(t: Array<DoubleArray>, inicial: List<Int>): List<Int> {
+    private fun mejorar(t: Array<DoubleArray>, desde: Int, inicial: List<Int>, hasta: Int?): List<Int> {
         var mejor = inicial.toMutableList()
-        var mejorCosto = costo(t, mejor)
+        var mejorCosto = costo(t, mejor, desde, hasta)
         var cambio = true
         var vueltas = 0
         while (cambio && vueltas++ < 200) {
@@ -131,7 +150,7 @@ object Optimizador {
             for (i in 0 until mejor.size - 1) {
                 for (k in i + 1 until mejor.size) {
                     val prueba = (mejor.subList(0, i) + mejor.subList(i, k + 1).reversed() + mejor.subList(k + 1, mejor.size)).toMutableList()
-                    val c = costo(t, prueba)
+                    val c = costo(t, prueba, desde, hasta)
                     if (c + 1e-9 < mejorCosto) { mejor = prueba; mejorCosto = c; cambio = true }
                 }
             }
@@ -141,7 +160,7 @@ object Optimizador {
                     val prueba = mejor.toMutableList()
                     val x = prueba.removeAt(i)
                     prueba.add(k, x)
-                    val c = costo(t, prueba)
+                    val c = costo(t, prueba, desde, hasta)
                     if (c + 1e-9 < mejorCosto) { mejor = prueba; mejorCosto = c; cambio = true }
                 }
             }
@@ -192,7 +211,7 @@ object Recorrido {
     fun aJson(paradas: List<Parada>, it: Itinerario?): String = Json.escribir(
         linkedMapOf(
             "paradas" to paradas.map { p ->
-                linkedMapOf("id" to p.id, "lat" to p.lugar.punto.lat, "lon" to p.lugar.punto.lon, "nombre" to p.lugar.nombre, "minutos" to p.minutos, "visitada" to p.visitada)
+                linkedMapOf("id" to p.id, "lat" to p.lugar.punto.lat, "lon" to p.lugar.punto.lon, "nombre" to p.lugar.nombre, "minutos" to p.minutos, "visitada" to p.visitada, "final" to p.final, "siguiente" to p.siguiente)
             },
             "itinerario" to it?.let { x ->
                 linkedMapOf(
@@ -220,6 +239,8 @@ object Recorrido {
                     lugar = Lugar(Punto(lat, lon), m.texto("nombre")),
                     minutos = (m.num("minutos") ?: 15.0).toInt().coerceIn(0, 600),
                     visitada = (m as? Map<*, *>)?.get("visitada") == true,
+                    final = (m as? Map<*, *>)?.get("final") == true,
+                    siguiente = (m as? Map<*, *>)?.get("siguiente") == true,
                 )
             }
             val porId = paradas.associateBy { it.id }

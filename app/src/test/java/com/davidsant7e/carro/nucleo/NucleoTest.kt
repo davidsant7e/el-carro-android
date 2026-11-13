@@ -206,7 +206,7 @@ class NucleoTest {
         assertEquals(700.0, Google.aRuta(r[0], 0).segundos, 0.0)
         assertEquals(2, r[0].puntos.size)
         assertEquals(
-            listOf("Museo del Oro, Cra. 6 #15-88, Bogotá", "Cra. 6 #15-88, Bogotá", "Museo del Oro, Bogotá"),
+            listOf("Museo del Oro, Cra. 6 #15-88, Bogotá", "Museo del Oro, Bogotá", "Cra. 6 #15-88, Bogotá", "Museo del Oro, Cra. 6, Bogotá"),
             Nominatim.variantes("Museo del Oro, Cra. 6 #15-88, Bogotá"),
         )
         assertEquals(listOf("Unicentro"), Nominatim.variantes(" Unicentro "))

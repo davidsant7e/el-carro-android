@@ -44,6 +44,34 @@ object Http {
     }
 
     /**
+     * Descarga una página web (siguiendo redirecciones) como la vería un navegador, hasta [maxBytes].
+     * Se usa para leer las coordenadas de la página de un lugar de Google Maps.
+     */
+    fun pagina(url: String, maxBytes: Int = 2_000_000): String {
+        val c = URL(url).openConnection() as HttpURLConnection
+        try {
+            c.instanceFollowRedirects = true
+            c.connectTimeout = 10_000
+            c.readTimeout = 15_000
+            c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Mobile Safari/537.36")
+            c.setRequestProperty("Accept-Language", "es-CO,es;q=0.9")
+            val flujo = if (c.responseCode in 200..299) c.inputStream else c.errorStream ?: return ""
+            flujo.use { f ->
+                val buf = ByteArray(maxBytes)
+                var n = 0
+                while (n < maxBytes) {
+                    val r = f.read(buf, n, maxBytes - n)
+                    if (r < 0) break
+                    n += r
+                }
+                return String(buf, 0, n, Charsets.UTF_8)
+            }
+        } finally {
+            c.disconnect()
+        }
+    }
+
+    /**
      * Sigue las redirecciones de un enlace corto (maps.app.goo.gl, waze) sin descargar la página
      * y devuelve la URL final. Se detiene antes si una URL intermedia ya trae coordenadas.
      */

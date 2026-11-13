@@ -102,10 +102,12 @@ fun MapaParadas(
     ruta: List<Punto>,
     paradas: List<com.davidsant7e.carro.nucleo.Parada>,
     alMantener: (Punto) -> Unit,
+    alTocar: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val ctx = LocalContext.current
     val alMantenerActual = androidx.compose.runtime.rememberUpdatedState(alMantener)
+    val alTocarActual = androidx.compose.runtime.rememberUpdatedState(alTocar)
     val mapa = remember {
         MapView(ctx).apply {
             setTileSource(TileSourceFactory.MAPNIK)
@@ -155,6 +157,7 @@ fun MapaParadas(
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                     title = "$etiqueta · ${p.lugar.nombre ?: "Parada"}"
                     icon = circuloNumerado(m.context, etiqueta, p.visitada)
+                    setOnMarkerClickListener { _, _ -> alTocarActual.value(p.id); true }
                 })
             }
             val puntos = paradas.map { it.lugar.punto } + listOfNotNull(origen) + ruta

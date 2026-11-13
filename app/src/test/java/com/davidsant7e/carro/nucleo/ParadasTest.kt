@@ -143,3 +143,60 @@ class ParadasTest {
         assertTrue(ValhallaParadas.urlMatriz("https://x/", "{}").startsWith("https://x/sources_to_targets?json="))
     }
 }
+
+class ParadasFijasTest {
+    private fun lineal(pos: List<Double>) = Array(pos.size) { i -> DoubleArray(pos.size) { j -> Math.abs(pos[i] - pos[j]) } }
+
+    @Test
+    fun paradaFinalElegida() {
+        // Salida en 0, paradas en 10, 20, 30: sin restricción iría 1,2,3; si la final es la 1 (en 10)…
+        val t = lineal(listOf(0.0, 10.0, 20.0, 30.0))
+        assertEquals(listOf(1, 2, 3), Optimizador.orden(t))
+        assertEquals(1, Optimizador.orden(t, ultimo = 1).last())
+        assertEquals(50.0, Optimizador.costo(t, Optimizador.orden(t, ultimo = 1)), 1e-9) // 3,2,1 o 2,3,1 (empate)
+    }
+
+    @Test
+    fun siguienteElegidaYFinal() {
+        val t = lineal(listOf(0.0, 10.0, 20.0, 30.0, 40.0))
+        assertEquals(listOf(3, 2, 1, 4), Optimizador.orden(t, primero = 3, ultimo = 4).let { o ->
+            // primero 3 (en 30), luego lo más barato hasta terminar en 4 (en 40): 30→20→10→40
+            o
+        })
+        assertEquals(3, Optimizador.orden(t, primero = 3).first())
+        assertEquals(listOf(4, 3, 2, 1), Optimizador.orden(t, primero = 4))
+    }
+
+    @Test
+    fun fijasConMuchasParadas() {
+        val r = kotlin.random.Random(7)
+        val pos = List(16) { r.nextDouble(0.0, 100.0) }
+        val t = lineal(pos)
+        val o = Optimizador.orden(t, primero = 5, ultimo = 9)
+        assertEquals(5, o.first()); assertEquals(9, o.last()); assertEquals((1..15).toSet(), o.toSet())
+    }
+
+    @Test
+    fun guardaFinalYSiguiente() {
+        val a = Parada("a", Lugar(Punto(4.6, -74.0), "A"), final = true)
+        val b = Parada("b", Lugar(Punto(4.7, -74.1), "B"), siguiente = true)
+        assertEquals(listOf(a, b), Recorrido.deJson(Recorrido.aJson(listOf(a, b), null)).first)
+    }
+
+    @Test
+    fun coordenadasEnLaPaginaDeGoogle() {
+        assertEquals(Punto(6.2045, -75.5778), Enlaces.coordenadasDePagina(
+            """<meta content="https://maps.google.com/maps/api/staticmap?center=6.2045%2C-75.5778&amp;zoom=17" property="og:image">"""))
+        assertEquals(Punto(6.2, -75.57), Enlaces.coordenadasDePagina("""window.APP_INITIALIZATION_STATE=[[[1234.5,-75.57,6.2],[0,0,0]"""))
+        assertNull(Enlaces.coordenadasDePagina("<html>nada</html>"))
+    }
+
+    @Test
+    fun variantesDelNombreDeGoogle() {
+        val v = Nominatim.variantes("Homecenter | Medellín Av Los Industriales, Cra. 49, Av. Las Vegas #14-135, Medellín, El Poblado")
+        assertTrue(v.toString(), v.size <= 4)
+        assertTrue(v.toString(), v.any { it == "Homecenter, El Poblado" || it == "Homecenter, Medellín" })
+        assertTrue(v.toString(), v.any { !it.contains('#') && it.contains("Cra. 49") })
+        assertEquals(listOf("Calle 72 Bogotá"), Nominatim.variantes("Calle 72 Bogotá"))
+    }
+}

@@ -8,15 +8,23 @@ poco usadas— para carro o moto, y abre la elegida en **Google Maps** obligánd
 Kotlin · Jetpack Compose · osmdroid (mapa de OpenStreetMap) · API mínima 26 · compileSdk 37 ·
 sin servidor propio y sin clave obligatoria.
 
+## Instalar sin el PC
+
+Cada cambio en `main` se compila en GitHub Actions y el APK queda en
+[Releases → ultima](https://github.com/davidsant7e/el-carro-android/releases/tag/ultima).
+Desde el celular se descarga **el-carro.apk** y se instala. El PC y GitHub firman con la misma llave de prueba
+(`firma/`), así que se puede instalar uno encima del otro sin perder datos.
+
 ## Varias paradas
 
 Arriba eliges **Una ruta** o **Varias paradas**.
 
 1. **Agrega las paradas** de tres formas: búscalas en el campo, compártelas desde Google Maps o Waze (*Compartir → El Carro*) o **mantén presionado** un punto del mapa.
 2. A cada parada ponle **cuánto te quedas** (− / + de a 5 minutos; por defecto 15).
-3. **Organizar ruta**: El Carro sale de tu ubicación y busca el orden que menos tiempo de manejo suma. La ruta termina en la parada que más convenga. Con hasta 12 paradas el orden es el óptimo exacto; con más (máximo 20), una aproximación muy buena.
-4. Cada parada muestra **cuánto tardas en llegar**, **a qué hora llegas** y **a qué hora sales**. Arriba ves a qué hora terminas, el tiempo manejando y el tiempo en paradas.
-5. **Abrir en Google Maps** con todas las paradas en orden. Google acepta 10 por enlace; si hay más, se abre por tramos. O **Ir solo a esta parada**.
+3. Si quieres, marca una parada como **Ir ahora** (va primera) o **Terminar aquí** (va última), en su tarjeta o tocándola en el mapa.
+4. **Organizar ruta**: El Carro sale de tu ubicación y busca el orden que menos tiempo de manejo suma. Si no elegiste la final, la ruta termina donde más convenga. Con hasta 12 paradas el orden es el óptimo exacto; con más (máximo 20), una aproximación muy buena.
+5. Cada parada muestra **cuánto tardas en llegar**, **a qué hora llegas** y **a qué hora sales**. Arriba ves a qué hora terminas, el tiempo manejando y el tiempo en paradas.
+6. **Abrir en Google Maps** con todas las paradas en orden. Google acepta 10 por enlace; si hay más, se abre por tramos. O **Ir solo a esta parada**.
 
 **La ruta queda guardada.** Si abres El Carro estando en una de las paradas (a menos de 200 m), te dice «Estás en …» y te ofrece **Salir ahora**. Al tocarlo, esa parada queda hecha y se recalculan el orden y las horas de las que faltan, desde donde estás y con la hora de ese momento. También puedes marcar paradas como *Hecha* a mano o tocar *Recalcular desde aquí*.
 

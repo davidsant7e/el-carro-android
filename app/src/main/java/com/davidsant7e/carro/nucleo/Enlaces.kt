@@ -78,6 +78,31 @@ object Enlaces {
         return null
     }
 
+    private val EN_PAGINA = listOf(
+        // Vista previa del lugar: staticmap?center=LAT%2CLNG
+        Regex("""center=$NUM(?:%2C|,)\s*$NUM"""),
+        // Marcador del lugar dentro de los datos de la página
+        Regex("""!3d$NUM!4d$NUM"""),
+        // Centro del mapa en los datos iniciales: [[[distancia,LNG,LAT]
+        Regex("""APP_INITIALIZATION_STATE=\[\[\[-?[\d.]+,$NUM,$NUM\]"""),
+    )
+
+    /**
+     * Los enlaces cortos de Google Maps a veces terminan en /maps/place/<nombre>/data=!…!1s0x…
+     * sin coordenadas; la página de Google sí las trae (vista previa, datos iniciales).
+     */
+    fun coordenadasDePagina(html: String): Punto? {
+        for ((i, r) in EN_PAGINA.withIndex()) {
+            val m = r.find(html) ?: continue
+            val a = m.groupValues[1]
+            val b = m.groupValues[2]
+            // En APP_INITIALIZATION_STATE el orden es longitud, latitud.
+            val p = if (i == 2) punto(b, a) else punto(a, b)
+            if (p != null) return p
+        }
+        return null
+    }
+
     fun nombreDeUrl(url: String): String? =
         NOMBRE_PLACE.find(decodificar(url))?.groupValues?.get(1)?.replace('+', ' ')?.trim()?.takeIf { it.isNotEmpty() }
 

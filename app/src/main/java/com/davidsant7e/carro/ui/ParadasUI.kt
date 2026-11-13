@@ -20,6 +20,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -76,20 +77,6 @@ fun LazyListScope.seccionParadas(e: Estado, vm: CarroViewModel, abrir: (String) 
         }
     }
 
-    // Mapa: ruta organizada y paradas numeradas; mantener presionado agrega una parada.
-    item {
-        val orden = itin?.visitas?.map { it.parada.id }.orEmpty()
-        MapaParadas(
-            origen = itin?.origen ?: e.origenUsado,
-            ruta = if (e.desactualizado) emptyList() else itin?.puntos.orEmpty(),
-            paradas = e.paradas.sortedBy { p -> orden.indexOf(p.id).let { if (it < 0) 999 else it } },
-            alMantener = vm::agregarDesdeMapa,
-            modifier = Modifier.fillMaxWidth().height(300.dp),
-        )
-        Text("Mantén presionado el mapa para agregar una parada.", Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.labelSmall)
-    }
-
     if (e.paradas.isNotEmpty()) {
         item {
             Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -136,6 +123,21 @@ fun LazyListScope.seccionParadas(e: Estado, vm: CarroViewModel, abrir: (String) 
             }
         }
     }
+    // Mapa: ruta organizada y paradas numeradas; mantener presionado agrega una parada.
+    item {
+        val orden = itin?.visitas?.map { it.parada.id }.orEmpty()
+        MapaParadas(
+            origen = itin?.origen ?: e.origenUsado,
+            ruta = if (e.desactualizado) emptyList() else itin?.puntos.orEmpty(),
+            paradas = e.paradas.sortedBy { p -> orden.indexOf(p.id).let { if (it < 0) 999 else it } },
+            alMantener = vm::agregarDesdeMapa,
+            alTocar = { vm.tocarParada(it) },
+            modifier = Modifier.fillMaxWidth().height(300.dp),
+        )
+        Text("Mantén presionado el mapa para agregar una parada; toca una parada para elegirla como siguiente o como final.", Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.labelSmall)
+    }
+
 }
 
 @Composable
@@ -183,7 +185,11 @@ private fun TarjetaParada(p: Parada, numero: Int?, v: Visita?, vm: CarroViewMode
                 Checkbox(checked = p.visitada, onCheckedChange = { c -> vm.marcarVisitada(p.id, c) })
                 Text("Hecha", style = MaterialTheme.typography.bodySmall)
             }
-            if (!p.visitada) TextButton(onClick = { abrir(vm.enlaceUnaParada(p)) }) { Text("Ir solo a esta parada") }
+            if (!p.visitada) Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                FilterChip(selected = p.siguiente, onClick = { vm.marcarSiguiente(p.id) }, label = { Text("Ir ahora") })
+                FilterChip(selected = p.final, onClick = { vm.marcarFinal(p.id) }, label = { Text("Terminar aquí") })
+                TextButton(onClick = { abrir(vm.enlaceUnaParada(p)) }) { Text("Ir solo a esta") }
+            }
         }
     }
 }

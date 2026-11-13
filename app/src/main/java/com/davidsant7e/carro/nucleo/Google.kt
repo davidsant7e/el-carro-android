@@ -88,15 +88,25 @@ object Nominatim {
         return sb.toString()
     }
 
-    /** Qué buscar, en orden, si el texto completo no da resultados (máximo 3 consultas). */
+    /**
+     * Qué buscar, en orden, si el texto completo no da resultados (máximo 4 consultas).
+     * Google comparte cosas como «Homecenter | Medellín Av Los Industriales, Cra. 49, Av. Las Vegas #14-135,
+     * Medellín, El Poblado»: se separa por «|» y comas, se quita el «#14-135» y se prueba
+     * nombre + ciudad, la dirección sola y el texto limpio.
+     */
     fun variantes(texto: String): List<String> {
-        val partes = texto.split(',').map { it.trim() }.filter { it.isNotEmpty() }
-        if (partes.size < 2) return listOf(texto.trim())
+        val original = texto.replace('|', ',').split(',').map { it.trim() }.filter { it.isNotEmpty() }
+        if (original.size < 2) return listOf(texto.trim())
+        val sinNumero = { x: String -> x.replace(Regex("""#\s*[\d-]+\w*"""), " ").replace(Regex("""\s+"""), " ").trim().trim('.') }
+        val limpias = original.map(sinNumero).filter { it.isNotEmpty() }
+        val nombre = limpias.first()
+        val ciudad = limpias.drop(1).lastOrNull { c -> c.none { it.isDigit() } && c.split(' ').size <= 3 } ?: limpias.last()
         return listOf(
-            partes.joinToString(", "),
-            partes.drop(1).joinToString(", "),
-            "${partes.first()}, ${partes.last()}",
-        ).distinct()
+            texto.trim(),
+            "$nombre, $ciudad",
+            original.drop(1).joinToString(", "),
+            limpias.joinToString(", "),
+        ).filter { it.isNotEmpty() }.distinct().take(4)
     }
 
     /** Nombre del lugar en un punto (para las paradas marcadas en el mapa). */

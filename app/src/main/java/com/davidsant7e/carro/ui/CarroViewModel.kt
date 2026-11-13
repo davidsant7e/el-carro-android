@@ -65,6 +65,8 @@ data class Estado(
     val organizando: String? = null,
     /** La parada pendiente donde estás ahora (detectada por GPS al abrir la app). */
     val estasEn: Parada? = null,
+    /** Parada tocada en el mapa (para el menú: siguiente, terminar aquí, quitar). */
+    val paradaTocada: Parada? = null,
 ) {
     val pendientes: List<Parada> get() = paradas.filter { !it.visitada }
 }
@@ -116,7 +118,9 @@ class CarroViewModel(app: Application) : AndroidViewModel(app) {
                     val final = withContext(Dispatchers.IO) {
                         Http.resolverRedireccion(e.url, { Enlaces.coordenadasDeUrl(it) != null })
                     }
+                    // Si el enlace final no trae coordenadas (/maps/place/<nombre>/data=…), se leen de la página.
                     val p = Enlaces.coordenadasDeUrl(final)
+                        ?: if ("google." in final) withContext(Dispatchers.IO) { runCatching { Enlaces.coordenadasDePagina(Http.pagina(final)) }.getOrNull() } else null
                     when {
                         p != null -> elegirDestino(Lugar(p, e.nombre ?: Enlaces.nombreDeUrl(final)))
                         e.nombre != null -> buscarEnMapa(e.nombre)
@@ -291,6 +295,20 @@ class CarroViewModel(app: Application) : AndroidViewModel(app) {
     fun cambiarMinutos(id: String, delta: Int) =
         cambiarParadas { l -> l.map { if (it.id == id) it.copy(minutos = (it.minutos + delta).coerceIn(0, 600)) else it } }
 
+    /** «Ir ahora a esta»: queda primera al organizar (solo una). */
+    fun marcarSiguiente(id: String) = cambiarParadas { l ->
+        val ya = l.any { it.id == id && it.siguiente }
+        l.map { it.copy(siguiente = !ya && it.id == id, final = if (it.id == id && !ya) false else it.final) }
+    }
+
+    /** «Terminar aquí»: queda última al organizar (solo una). */
+    fun marcarFinal(id: String) = cambiarParadas { l ->
+        val ya = l.any { it.id == id && it.final }
+        l.map { it.copy(final = !ya && it.id == id, siguiente = if (it.id == id && !ya) false else it.siguiente) }
+    }
+
+    fun tocarParada(id: String?) = _estado.update { s -> s.copy(paradaTocada = s.paradas.firstOrNull { it.id == id }) }
+
     fun marcarVisitada(id: String, v: Boolean) = cambiarParadas { l -> l.map { if (it.id == id) it.copy(visitada = v) else it } }
 
     fun limpiarParadas() {
@@ -310,7 +328,10 @@ class CarroViewModel(app: Application) : AndroidViewModel(app) {
 
     /** «Salir ahora»: la parada donde estás queda hecha y se recalcula lo que falta desde aquí y desde esta hora. */
     fun salirAhora() {
-        _estado.value.estasEn?.let { p -> marcarVisitada(p.id, true) }
+        _estado.value.estasEn?.let { p ->
+            // La parada hecha ya no puede ser «siguiente».
+            cambiarParadas { l -> l.map { if (it.id == p.id) it.copy(visitada = true, siguiente = false) else it } }
+        }
         _estado.update { it.copy(estasEn = null) }
         organizar()
     }
@@ -338,7 +359,9 @@ class CarroViewModel(app: Application) : AndroidViewModel(app) {
                             Http.get(ValhallaParadas.urlMatriz(servidor, ValhallaParadas.cuerpoMatriz(puntos, prefs.vehiculo, prefs.evitarPeajes))),
                             puntos.size,
                         )
-                        Optimizador.orden(t)
+                        val primero = pendientes.indexOfFirst { it.siguiente }.takeIf { it >= 0 }?.plus(1)
+                        val ultimo = pendientes.indexOfFirst { it.final }.takeIf { it >= 0 }?.plus(1)
+                        Optimizador.orden(t, primero, ultimo)
                     }
                 }
                 val enOrden = orden.map { pendientes[it - 1] }
