@@ -37,6 +37,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Ruta de varias paradas guardada: ¿estás en una de ellas? (para ofrecer «Salir ahora»).
+        vm.comprobarUbicacion()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         recibir(intent)

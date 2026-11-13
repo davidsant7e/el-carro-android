@@ -99,6 +99,17 @@ object Nominatim {
         ).distinct()
     }
 
+    /** Nombre del lugar en un punto (para las paradas marcadas en el mapa). */
+    fun urlReverso(p: Punto): String =
+        "$SERVIDOR/reverse?format=jsonv2&accept-language=es&zoom=18&lat=%.6f&lon=%.6f".format(java.util.Locale.ROOT, p.lat, p.lon)
+
+    /** Nombre corto: lo primero de la dirección (lugar o calle y número). */
+    fun leerReverso(respuesta: String): String? {
+        val r = Json.parse(respuesta)
+        r.texto("name")?.takeIf { it.isNotBlank() }?.let { return it }
+        return r.texto("display_name")?.split(',')?.take(2)?.joinToString(",")?.trim()?.takeIf { it.isNotEmpty() }
+    }
+
     fun leer(respuesta: String): List<Lugar> =
         (Json.parse(respuesta) as? List<*>).orEmpty().mapNotNull { r ->
             val lat = r.num("lat") ?: return@mapNotNull null

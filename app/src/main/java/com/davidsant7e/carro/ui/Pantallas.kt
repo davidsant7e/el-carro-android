@@ -96,6 +96,10 @@ fun PantallaPrincipal(
                     )
                 }
             }
+            if (e.modoParadas) {
+                seccionParadas(e, vm, abrir)
+                return@LazyColumn
+            }
             item { EstadoBusqueda(e, vm) }
             val rutas = e.resultado?.rutas.orEmpty()
             if (rutas.isNotEmpty()) {
@@ -146,6 +150,13 @@ fun PantallaPrincipal(
 @Composable
 private fun CampoDestino(e: Estado, vm: CarroViewModel, pegar: () -> String?) {
     Column(Modifier.padding(horizontal = 16.dp).padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = !e.modoParadas, onClick = { vm.cambiarModo(false) }, label = { Text("Una ruta") })
+            FilterChip(
+                selected = e.modoParadas, onClick = { vm.cambiarModo(true) },
+                label = { Text(if (e.pendientes.isEmpty()) "Varias paradas" else "Varias paradas (${e.pendientes.size})") },
+            )
+        }
         Text(
             if (e.origen == null) "Desde: tu ubicación actual" else "Desde: ${e.origen.nombre ?: e.origen.punto.texto()}",
             style = MaterialTheme.typography.bodySmall,
@@ -153,7 +164,7 @@ private fun CampoDestino(e: Estado, vm: CarroViewModel, pegar: () -> String?) {
         OutlinedTextField(
             value = e.consulta,
             onValueChange = vm::escribirConsulta,
-            label = { Text("¿A dónde vas?") },
+            label = { Text(if (e.modoParadas) "Agregar parada" else "¿A dónde vas?") },
             placeholder = { Text("Dirección, lugar, coordenadas o enlace") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
@@ -171,7 +182,8 @@ private fun CampoDestino(e: Estado, vm: CarroViewModel, pegar: () -> String?) {
             }
         }
         Text(
-            "Consejo: en Google Maps o Waze toca Compartir → El Carro.",
+            if (e.modoParadas) "Consejo: en Google Maps o Waze toca Compartir → El Carro y se agrega como parada."
+            else "Consejo: en Google Maps o Waze toca Compartir → El Carro.",
             style = MaterialTheme.typography.labelSmall,
         )
     }

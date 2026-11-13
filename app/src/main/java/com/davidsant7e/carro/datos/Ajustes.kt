@@ -48,6 +48,16 @@ class Ajustes(ctx: Context) {
             p.edit().putString("recientes", Json.escribir(lista)).apply()
         }
 
+    /** Ruta de varias paradas guardada (paradas + último itinerario), en JSON. */
+    var rutaParadas: String?
+        get() = p.getString("rutaParadas", null)
+        set(v) = p.edit().putString("rutaParadas", v).apply()
+
+    /** Último modo usado: una ruta o varias paradas. */
+    var modoParadas: Boolean
+        get() = p.getBoolean("modoParadas", false)
+        set(v) = p.edit().putBoolean("modoParadas", v).apply()
+
     fun recordar(l: Lugar) {
         recientes = listOf(l) + recientes.filter { com.davidsant7e.carro.nucleo.Geo.distancia(it.punto, l.punto) > 30 }
     }
