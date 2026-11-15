@@ -22,6 +22,7 @@ import com.davidsant7e.carro.nucleo.Preferencias
 import com.davidsant7e.carro.nucleo.Punto
 import com.davidsant7e.carro.nucleo.Vehiculo
 import com.davidsant7e.carro.red.Http
+import com.davidsant7e.carro.registro.Registro
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -97,6 +98,7 @@ class CarroViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Texto compartido desde Google Maps / Waze, un enlace geo:, coordenadas o una dirección. */
     fun recibir(texto: String) {
+        Registro.evento("COMPARTIDO", "recibido", "largo" to texto.length, "es_enlace" to texto.contains("http"))
         _estado.update { it.copy(consulta = texto.lines().firstOrNull { l -> l.isNotBlank() }?.trim().orEmpty()) }
         viewModelScope.launch { interpretar(texto) }
     }
@@ -133,6 +135,7 @@ class CarroViewModel(app: Application) : AndroidViewModel(app) {
                 Enlaces.Interpretacion.Nada -> aviso("Escribe una dirección, pega un enlace o comparte un lugar desde Google Maps o Waze.")
             }
         } catch (e: IOException) {
+            Registro.error("LUGAR", e)
             aviso("Sin conexión: ${e.message ?: "revisa internet"}")
         } finally {
             _estado.update { it.copy(buscandoLugar = false) }
@@ -224,9 +227,12 @@ class CarroViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 }
                 _estado.update { it.copy(fase = Fase.Listo, resultado = r) }
+                Registro.evento("RUTAS", "listas", "rutas" to r.rutas.size, "consultas" to r.consultas, "candidatas" to r.candidatas, "avisos" to r.avisos.size, "vehiculo" to prefs.vehiculo)
             } catch (e: ErrorRuta) {
+                Registro.error("RUTAS", e)
                 _estado.update { it.copy(fase = Fase.Fallo("El mapa no encontró ruta: ${e.message}")) }
             } catch (e: IOException) {
+                Registro.error("RUTAS", e)
                 _estado.update { it.copy(fase = Fase.Fallo("Sin conexión con el servidor de rutas (${e.message}). Intenta de nuevo.")) }
             }
         }
@@ -372,10 +378,13 @@ class CarroViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 val itin = Recorrido.horario(origen, System.currentTimeMillis(), enOrden, tramos, prefs.vehiculo)
                 _estado.update { it.copy(itinerario = itin, desactualizado = false, origenUsado = origen) }
+                Registro.evento("PARADAS", "organizadas", "paradas" to enOrden.size, "km" to itin.metros / 1000.0, "min_viaje" to itin.segundosViaje / 60.0)
                 guardar()
             } catch (e: ErrorRuta) {
+                Registro.error("PARADAS", e)
                 aviso("El mapa no encontró ruta: ${e.message}")
             } catch (e: IOException) {
+                Registro.error("PARADAS", e)
                 aviso("Sin conexión con el servidor de rutas (${e.message}). Intenta de nuevo.")
             } finally {
                 _estado.update { it.copy(organizando = null) }

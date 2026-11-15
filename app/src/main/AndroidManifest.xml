@@ -43,6 +43,24 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="geo" />
             </intent-filter>
+            <!-- Mantener presionado el ícono → «Enviar registro». -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/atajos_registro" />
         </activity>
+
+        <!-- Registro (log) de la app: arranca solo con el proceso; se comparte desde el atajo del ícono. -->
+        <provider
+            android:name="com.davidsant7e.carro.registro.RegistroInicio"
+            android:authorities="${applicationId}.registro"
+            android:exported="false"
+            android:initOrder="1000" />
+        <activity
+            android:name="com.davidsant7e.carro.registro.EnviarRegistroActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
     </application>
 </manifest>
